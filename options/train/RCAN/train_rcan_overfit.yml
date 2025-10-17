@@ -1,0 +1,101 @@
+# Overfitting-specific configuration
+# general settings
+name: RCAN_biosr_overfit
+model_type: RCANCustom
+scale: 1
+num_gpu: 1
+manual_seed: 10
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: BioSR
+    type: BioSRDataset
+    phase: train
+    dataroot: /group/jug/Vera/datasets/biosr/MicroTubules/test_train/
+    use_hflip: false  # NO augmentation for overfitting
+    use_rot: false    # NO augmentation for overfitting
+    input_mean: 110.81242
+    input_std: 9.165207
+    target_mean: 5753.911
+    target_std: 5985.273
+
+    # data loader - smaller batch for overfitting
+    num_worker_per_gpu: 1
+    batch_size_per_gpu: 4  # Single batch for overfitting
+
+  val:
+    name: BioSR_val
+    type: BioSRDataset
+    phase: val
+    dataroot: /group/jug/Vera/datasets/biosr/MicroTubules/test_val/
+    use_hflip: false
+    use_rot: false
+    input_mean: 110.81242
+    input_std: 9.165207
+    target_mean: 5753.911
+    target_std: 5985.273
+
+# network structures - smaller model for overfitting
+network_g:
+  type: RCAN_custom
+  num_in_ch: 1
+  num_out_ch: 1
+  num_feat: 64
+  num_group: 5   # Reduced from 10
+  num_block: 2   # Reduced from 20
+  squeeze_factor: 16
+  upscale: 1
+  res_scale: 1
+
+# training settings - optimized for overfitting
+train:
+  num_worker_per_gpu: 4
+  batch_size_per_gpu: 4
+
+  optim_g:
+    type: Adam
+    lr: !!float 1e-4  # Lower learning rate for overfitting
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: MultiStepLR
+    milestones: [5000]  # Shorter milestones
+    gamma: 0.5
+
+  total_iter: 5000  # Fewer iterations for overfitting
+  warmup_iter: -1
+
+  # Try L2 loss instead of L1 for less blurriness
+  pixel_opt:
+    type: MSELoss
+    loss_weight: 1.0
+    reduction: mean
+
+# validation settings
+val:
+  val_freq: 2
+  save_img: false  # Save images to see progress
+
+  metrics:
+    psnr:
+      type: calculate_psnr
+      crop_border: 0
+      test_y_channel: false
+    loss:
+      type: calculate_loss
+
+path:
+  pretrain_network_g: ~
+  strict_load_g: true
+  resume_state: ~
+
+# logging settings
+logger:
+  print_freq: 2  # Print every iteration
+  save_checkpoint_freq: 20
+  use_tb_logger: true
+  wandb:
+    project: basicsr
+    resume_id: ~

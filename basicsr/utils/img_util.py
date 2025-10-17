@@ -4,6 +4,7 @@ import numpy as np
 import os
 import torch
 from torchvision.utils import make_grid
+import tifffile
 
 
 def img2tensor(imgs, bgr2rgb=True, float32=True):
@@ -148,7 +149,7 @@ def imwrite(img, file_path, params=None, auto_mkdir=True):
     if auto_mkdir:
         dir_name = os.path.abspath(os.path.dirname(file_path))
         os.makedirs(dir_name, exist_ok=True)
-    ok = cv2.imwrite(file_path, img, params)
+    ok = tifffile.imwrite(file_path, img)
     if not ok:
         raise IOError('Failed in writing images.')
 

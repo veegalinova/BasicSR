@@ -9,14 +9,23 @@ from basicsr.utils.registry import METRIC_REGISTRY
 
 
 @METRIC_REGISTRY.register()
+def calculate_loss(img, img2, **kwargs):
+    """Calculate loss."""
+    img = torch.from_numpy(img).to(torch.float64)
+    img2 = torch.from_numpy(img2).to(torch.float64)
+    l1_loss = torch.mean(torch.abs(img - img2))
+    return l1_loss.item()
+
+
+@METRIC_REGISTRY.register()
 def calculate_psnr(img, img2, crop_border, input_order='HWC', test_y_channel=False, **kwargs):
     """Calculate PSNR (Peak Signal-to-Noise Ratio).
 
     Reference: https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio
 
     Args:
-        img (ndarray): Images with range [0, 255].
-        img2 (ndarray): Images with range [0, 255].
+        img (ndarray): Images with arbitrary range.
+        img2 (ndarray): Images with arbitrary range.
         crop_border (int): Cropped pixels in each edge of an image. These pixels are not involved in the calculation.
         input_order (str): Whether the input order is 'HWC' or 'CHW'. Default: 'HWC'.
         test_y_channel (bool): Test on Y channel of YCbCr. Default: False.
@@ -24,6 +33,7 @@ def calculate_psnr(img, img2, crop_border, input_order='HWC', test_y_channel=Fal
     Returns:
         float: PSNR result.
     """
+    from skimage.metrics import peak_signal_noise_ratio
 
     assert img.shape == img2.shape, (f'Image shapes are different: {img.shape}, {img2.shape}.')
     if input_order not in ['HWC', 'CHW']:
@@ -42,10 +52,7 @@ def calculate_psnr(img, img2, crop_border, input_order='HWC', test_y_channel=Fal
     img = img.astype(np.float64)
     img2 = img2.astype(np.float64)
 
-    mse = np.mean((img - img2)**2)
-    if mse == 0:
-        return float('inf')
-    return 10. * np.log10(255. * 255. / mse)
+    return peak_signal_noise_ratio(img, img2, data_range=img2.max() - img2.min())
 
 
 @METRIC_REGISTRY.register()

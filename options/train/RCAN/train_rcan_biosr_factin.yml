@@ -1,0 +1,100 @@
+# TODO
+# general settings
+name: RCAN_biosr_Factin_12
+model_type: RCANCustom
+scale: 1
+num_gpu: 1  # set num_gpu: 0 for cpu mode
+manual_seed: 10
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: BioSR
+    type: BioSRDataset
+    phase: train
+    dataroot: /group/jug/Anirban/Datasets/BioSR/F-actin_SuperRes/train_crop/
+    use_hflip: false
+    use_rot: false
+    input_mean: 112.05498
+    input_std: 10.140036
+    target_mean: 6608.2
+    target_std: 5541.5005
+
+    # data loader
+    num_worker_per_gpu: 8
+    batch_size_per_gpu: 12  # 2800 images / 12 batch size = 234 iterations per epoch
+
+  val:
+    name: BioSR_val
+    type: BioSRDataset
+    phase: val
+    dataroot: /group/jug/Anirban/Datasets/BioSR/F-actin_SuperRes/val_crop/
+    use_hflip: false
+    use_rot: false
+    input_mean: 112.05498
+    input_std: 10.140036
+    target_mean: 6608.2
+    target_std: 5541.5005
+
+# network structures
+network_g:
+  type: RCAN_custom
+  num_in_ch: 1
+  num_out_ch: 1
+  num_feat: 64
+  num_group: 10
+  num_block: 20
+  squeeze_factor: 16
+  upscale: 1
+  res_scale: 1
+
+# training settings
+train:
+  # ema_decay: 0
+  optim_g:
+    type: Adam
+    lr: !!float 1e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: MultiStepLR
+    milestones: [11700, 17550]  # At epochs 50 and 75 (234*50=11700, 234*75=17550)
+    gamma: 0.5
+
+  total_iter: 46800  # 200 epochs * 234 iterations per epoch (2800/12)
+  warmup_iter: -1  # no warm up
+
+  # losses
+  pixel_opt:
+    type: L1Loss
+    loss_weight: 1.0
+    reduction: mean
+
+# validation settings
+val:
+  val_freq: 234  # Validate after every epoch (234 iterations = 1 epoch)
+  save_img: false
+  # suffix: "reconstruction"  # Optional: custom suffix for saved images
+
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: calculate_psnr
+      crop_border: 0
+      test_y_channel: false
+    loss: # track training loss
+      type: calculate_loss
+
+path:
+  pretrain_network_g: ~
+  strict_load_g: true
+  resume_state: ~
+
+# logging settings
+logger:
+  print_freq: 59  # Print four times per epoch (234/4 = 59)
+  save_checkpoint_freq: 234  # Save checkpoint after every epoch
+  use_tb_logger: true
+  wandb:
+    project: basicsr
+    resume_id: ~
