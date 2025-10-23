@@ -52,7 +52,8 @@ def calculate_psnr(img, img2, crop_border, input_order='HWC', test_y_channel=Fal
     img = img.astype(np.float64)
     img2 = img2.astype(np.float64)
 
-    return peak_signal_noise_ratio(img, img2, data_range=img2.max() - img2.min())
+    psnr_val = peak_signal_noise_ratio(img, img2, data_range=img2.max() - img2.min())
+    return 0.0 if np.isnan(psnr_val) else psnr_val
 
 
 @METRIC_REGISTRY.register()

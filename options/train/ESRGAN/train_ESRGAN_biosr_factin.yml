@@ -1,0 +1,121 @@
+# general settings
+name: ESRGAN_biosr_factin
+model_type: ESRGANModel
+scale: 1
+num_gpu: 1  # set num_gpu: 0 for cpu mode
+manual_seed: 10
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: BioSR
+    type: BioSRDataset
+    dataroot: /group/jug/Anirban/Datasets/BioSR/F-actin_SuperRes/train_crop/
+    phase: train
+    use_hflip: false
+    use_rot: false
+    input_mean: 112.05498
+    input_std: 10.140036
+    target_mean: 6608.2
+    target_std: 5541.5005
+
+    num_worker_per_gpu: 8
+    batch_size_per_gpu: 16  # 2800 images / 16 batch size = 175 iterations per epoch
+
+  val:
+    name: BioSR_val
+    type: BioSRDataset
+    phase: val
+    dataroot: /group/jug/Anirban/Datasets/BioSR/F-actin_SuperRes/val_crop/
+    input_mean: 112.05498
+    input_std: 10.140036
+    target_mean: 6608.2
+    target_std: 5541.5005
+
+# network structures
+network_g:
+  type: RRDBNet
+  num_in_ch: 1
+  num_out_ch: 1
+  num_feat: 64
+  num_block: 23
+  scale: 1
+
+network_d:
+  type: VGGStyleDiscriminator
+  num_in_ch: 1
+  num_feat: 64
+
+# path
+path:
+  pretrain_network_g: ~
+  strict_load_g: true
+  resume_state: ~
+
+# training settings
+train:
+  optim_g:
+    type: Adam
+    lr: !!float 1e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+  optim_d:
+    type: Adam
+    lr: !!float 1e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: MultiStepLR
+    milestones: [8750, 13125]  # At epochs 50 and 75 (175*50=8750, 175*75=13125)
+    gamma: 0.5
+
+  total_iter: 35000  # 200 epochs * 175 iterations per epoch (2800/16)
+  warmup_iter: -1  # no warm up
+
+  # losses
+  pixel_opt:
+    type: L1Loss
+    loss_weight: !!float 1e-2
+    reduction: mean
+  perceptual_opt:
+    type: PerceptualLoss
+    layer_weights:
+      'conv5_4': 1  # before relu
+    vgg_type: vgg19
+    use_input_norm: true
+    range_norm: false
+    perceptual_weight: 1.0
+    style_weight: 0
+    criterion: l1
+  gan_opt:
+    type: GANLoss
+    gan_type: vanilla
+    real_label_val: 1.0
+    fake_label_val: 0.0
+    loss_weight: !!float 5e-3
+
+  net_d_iters: 1
+  net_d_init_iters: 0
+
+# validation settings
+val:
+  val_freq: 175  # Validate after every epoch (175 iterations = 1 epoch)
+  save_img: false
+
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: calculate_psnr
+      crop_border: 0
+      test_y_channel: false
+    loss: # track training loss
+      type: calculate_loss
+
+# logging settings
+logger:
+  print_freq: 44  # Print four times per epoch (175/4 = 44)
+  save_checkpoint_freq: 175  # Save checkpoint after every epoch
+  use_tb_logger: true
+  wandb:
+    project: basicsr
+    resume_id: ~

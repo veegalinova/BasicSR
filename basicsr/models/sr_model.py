@@ -200,7 +200,6 @@ class SRModel(BaseModel):
             pbar = tqdm(total=len(dataloader), unit='image')
 
         for idx, val_data in enumerate(dataloader):
-            img_name = osp.splitext(osp.basename(val_data['lq_path'][0]))[0]
             self.feed_data(val_data)
             self.test()
 
@@ -218,6 +217,7 @@ class SRModel(BaseModel):
             torch.cuda.empty_cache()
 
             if save_img:
+                img_name = osp.splitext(osp.basename(val_data['lq_path'][0]))[0]
                 if self.opt['is_train']:
                     save_img_path = osp.join(self.opt['path']['visualization'], img_name,
                                              f'{img_name}_{current_iter}.png')
